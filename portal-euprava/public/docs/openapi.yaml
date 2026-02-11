@@ -1,0 +1,1276 @@
+openapi: 3.0.3
+info:
+  title: Euprava REST API
+  version: "1.0.0"
+  description: |
+    Swagger/OpenAPI specifikacija bazirana na Postman kolekciji "Euprava REST API".
+
+    ## Test flow (isti redosled kao kolekcija)
+    1) Auth: Register (CITIZEN) (opciono).
+    2) Auth: Login (ADMIN) → Types/Institutions/Services CRUD.
+    3) Auth: Login (CITIZEN) → Service Requests: create DRAFT → update → submit.
+    4) Auth: Login (OFFICER) → assign → status (approve/reject) → payment.
+    5) PDF download + Stats + Upload.
+
+servers:
+  - url: http://127.0.0.1:8000
+    description: Local
+
+tags:
+  - name: Auth
+  - name: Types
+  - name: Institutions
+  - name: Services
+  - name: Service Requests
+  - name: Users
+  - name: Statistics
+  - name: Files
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Token
+      description: |
+        U Authorize unesi token iz login response-a.
+        Ako ti UI ne radi bez prefiksa, unesi: Bearer <token>.
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      example:
+        message: "Greška."
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+      example:
+        message: "The given data was invalid."
+        errors:
+          email: ["The email field is required."]
+
+    User:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        name: { type: string, example: "Ana Anić" }
+        email: { type: string, example: "ana@gmail.com" }
+        role: { type: string, example: "CITIZEN" }
+        date_of_birth: { type: string, format: date, example: "2000-03-04" }
+        jmbg: { type: string, example: "1234567890123" }
+
+    AuthLoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, example: "admin@gmail.com" }
+        password: { type: string, example: "Admin123!" }
+
+    AuthRegisterRequest:
+      type: object
+      required: [name, email, password, date_of_birth, jmbg]
+      properties:
+        name: { type: string, example: "Ana Anić" }
+        email: { type: string, format: email, example: "ana@gmail.com" }
+        password: { type: string, example: "Test12345!" }
+        date_of_birth: { type: string, format: date, example: "2000-03-04" }
+        jmbg: { type: string, example: "1234567890123" }
+
+    AuthResponse:
+      type: object
+      properties:
+        message: { type: string, example: "Uspešno ste se prijavili." }
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+          example: "1|abc123..."
+
+    Type:
+      type: object
+      properties:
+        id: { type: integer, example: 2 }
+        name: { type: string, example: "Lična dokumenta" }
+        description: { type: string, nullable: true, example: "Usluge vezane za lična dokumenta." }
+
+    Institution:
+      type: object
+      properties:
+        id: { type: integer, example: 5 }
+        name: { type: string, example: "Opština Vračar" }
+        city: { type: string, example: "Beograd" }
+        address: { type: string, example: "Njegoševa 77" }
+        email: { type: string, format: email, nullable: true, example: "pisarnica@vracar.rs" }
+
+    Service:
+      type: object
+      properties:
+        id: { type: integer, example: 12 }
+        institution_id: { type: integer, example: 5 }
+        type_id: { type: integer, example: 2 }
+        name: { type: string, example: "Izdavanje izvoda iz matične knjige rođenih" }
+        description: { type: string, nullable: true, example: "Elektronski zahtev za izdavanje izvoda." }
+        fee: { type: number, example: 350.0 }
+        requires_attachment: { type: boolean, example: true }
+        status: { type: string, example: "ACTIVE" }
+
+    ServiceRequest:
+      type: object
+      properties:
+        id: { type: integer, example: 101 }
+        service_id: { type: integer, example: 12 }
+        user_id: { type: integer, example: 1 }
+        processed_by: { type: integer, nullable: true, example: 3 }
+        status: { type: string, example: "DRAFT" }
+        citizen_note: { type: string, nullable: true, example: "Molim da se izvod izda hitno." }
+        officer_note: { type: string, nullable: true, example: "Zahtev je uredan." }
+        attachment: { type: string, nullable: true, example: "https://0x0.st/abcd.png" }
+        form_data:
+          type: object
+          additionalProperties: true
+          example:
+            reason: "Lični dokument"
+            urgent: true
+        payment_status: { type: string, example: "NOT_PAID" }
+        payment_date: { type: string, format: date-time, nullable: true }
+
+    StatsResponse:
+      type: object
+      properties:
+        role: { type: string, example: "CITIZEN" }
+        total_requests: { type: integer, example: 5 }
+        by_status:
+          type: array
+          items:
+            type: object
+            properties:
+              status: { type: string, example: "SUBMITTED" }
+              total: { type: integer, example: 2 }
+        top_services:
+          type: array
+          items:
+            type: object
+            properties:
+              service_id: { type: integer, example: 12 }
+              service_name: { type: string, example: "Izdavanje izvoda..." }
+              total: { type: integer, example: 3 }
+        monthly_trend:
+          type: array
+          items:
+            type: object
+            properties:
+              month: { type: string, example: "2026-02" }
+              total: { type: integer, example: 3 }
+        assigned_to_me: { type: integer, nullable: true, example: null }
+
+    UploadResponse:
+      type: object
+      properties:
+        link: { type: string, example: "https://0x0.st/abcd.png" }
+        name: { type: string, example: "dokument.png" }
+        size: { type: integer, example: 1024 }
+        mimeType: { type: string, example: "image/png" }
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register (CITIZEN)
+      description: Public ruta (bez tokena).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthRegisterRequest"
+      responses:
+        "200":
+          description: Registracija uspešna (u nekim implementacijama može biti 201).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "201":
+          description: Registracija uspešna.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "422":
+          description: Validaciona greška.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+
+  /api/auth/login/admin:
+    post:
+      tags: [Auth]
+      summary: Login (ADMIN)
+      description: |
+        Alias za login kao ADMIN. U pozadini poziva /api/auth/login.
+        Nakon uspeha kopiraj token i klikni Authorize.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthLoginRequest"
+            examples:
+              admin:
+                summary: ADMIN credentials
+                value:
+                  email: "admin@gmail.com"
+                  password: "Admin123!"
+      responses:
+        "200":
+          description: Uspešan login.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Neispravni podaci.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validaciona greška.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+
+  /api/auth/login/officer:
+    post:
+      tags: [Auth]
+      summary: Login (OFFICER)
+      description: |
+        Alias za login kao OFFICER. U pozadini poziva /api/auth/login.
+        Nakon uspeha kopiraj token i klikni Authorize.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthLoginRequest"
+            examples:
+              officer:
+                summary: OFFICER credentials
+                value:
+                  email: "officer@gmail.com"
+                  password: "Officer123!"
+      responses:
+        "200":
+          description: Uspešan login.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Neispravni podaci.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validaciona greška.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+
+  /api/auth/login/citizen:
+    post:
+      tags: [Auth]
+      summary: Login (CITIZEN)
+      description: |
+        Alias za login kao CITIZEN. U pozadini poziva /api/auth/login.
+        Nakon uspeha kopiraj token i klikni Authorize.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthLoginRequest"
+            examples:
+              citizen:
+                summary: CITIZEN credentials
+                value:
+                  email: "citizen@gmail.com"
+                  password: "Citizen123!"
+      responses:
+        "200":
+          description: Uspešan login.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Neispravni podaci.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validaciona greška.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Me
+      responses:
+        "200":
+          description: Trenutno ulogovan korisnik.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Uspešan logout.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/types:
+    get:
+      tags: [Types]
+      summary: List Types
+      responses:
+        "200":
+          description: Lista tipova.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Type"
+    post:
+      tags: [Types]
+      summary: Create Type (ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, example: "Lična dokumenta" }
+                description: { type: string, nullable: true, example: "Opis..." }
+      responses:
+        "200":
+          description: Kreiran tip.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Type"
+        "201":
+          description: Kreiran tip.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Type"
+        "403":
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validaciona greška.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+
+  /api/types/{type_id}:
+    get:
+      tags: [Types]
+      summary: Get Type
+      parameters:
+        - name: type_id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 2
+      responses:
+        "200":
+          description: Tip.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Type"
+        "404":
+          description: Not found.
+    put:
+      tags: [Types]
+      summary: Update Type (ADMIN)
+      parameters:
+        - name: type_id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, example: "Dokumenta" }
+                description: { type: string, nullable: true, example: "Opis..." }
+      responses:
+        "200":
+          description: Ažuriran tip.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Type"
+        "403":
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found.
+        "422":
+          description: Validaciona greška.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+    delete:
+      tags: [Types]
+      summary: Delete Type (ADMIN)
+      parameters:
+        - name: type_id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 2
+      responses:
+        "200":
+          description: Obrisano.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found.
+
+  /api/institutions:
+    get:
+      tags: [Institutions]
+      summary: List Institutions (ADMIN)
+      responses:
+        "200":
+          description: Lista institucija.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Institution"
+        "403":
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags: [Institutions]
+      summary: Create Institution (ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, city, address]
+              properties:
+                name: { type: string, example: "Opština Vračar" }
+                city: { type: string, example: "Beograd" }
+                address: { type: string, example: "Njegoševa 77" }
+                email: { type: string, format: email, nullable: true, example: "pisarnica@vracar.rs" }
+      responses:
+        "200":
+          description: Kreirana institucija.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Institution"
+        "201":
+          description: Kreirana institucija.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Institution"
+        "403":
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validaciona greška.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+
+  /api/institutions/{institution_id}:
+    get:
+      tags: [Institutions]
+      summary: Get Institution (ADMIN)
+      parameters:
+        - name: institution_id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 5
+      responses:
+        "200":
+          description: Institucija.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Institution"
+        "403":
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found.
+    put:
+      tags: [Institutions]
+      summary: Update Institution (ADMIN)
+      parameters:
+        - name: institution_id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 5
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                city: { type: string }
+                address: { type: string }
+                email: { type: string, format: email, nullable: true }
+      responses:
+        "200":
+          description: Ažurirana institucija.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Institution"
+        "403":
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found.
+        "422":
+          description: Validaciona greška.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+    delete:
+      tags: [Institutions]
+      summary: Delete Institution (ADMIN)
+      parameters:
+        - name: institution_id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 5
+      responses:
+        "200":
+          description: Obrisano.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found.
+
+  /api/services:
+    get:
+      tags: [Services]
+      summary: List Services
+      parameters:
+        - name: institution_id
+          in: query
+          required: false
+          schema: { type: integer }
+          example: 5
+        - name: type_id
+          in: query
+          required: false
+          schema: { type: integer }
+          example: 2
+      responses:
+        "200":
+          description: Lista servisa.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Service"
+    post:
+      tags: [Services]
+      summary: Create Service (ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [institution_id, type_id, name, fee, requires_attachment, status]
+              properties:
+                institution_id: { type: integer, example: 5 }
+                type_id: { type: integer, example: 2 }
+                name: { type: string, example: "Izdavanje izvoda iz matične knjige rođenih" }
+                description: { type: string, nullable: true, example: "Elektronski zahtev..." }
+                fee: { type: number, example: 350.0 }
+                requires_attachment: { type: boolean, example: true }
+                status: { type: string, example: "ACTIVE" }
+      responses:
+        "200":
+          description: Kreiran servis.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Service"
+        "201":
+          description: Kreiran servis.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Service"
+        "403":
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validaciona greška.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+
+  /api/services/{service_id}:
+    get:
+      tags: [Services]
+      summary: Get Service
+      parameters:
+        - name: service_id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 12
+      responses:
+        "200":
+          description: Servis.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Service"
+        "404":
+          description: Not found.
+    put:
+      tags: [Services]
+      summary: Update Service (ADMIN)
+      parameters:
+        - name: service_id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 12
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                institution_id: { type: integer }
+                type_id: { type: integer }
+                name: { type: string }
+                description: { type: string, nullable: true }
+                fee: { type: number }
+                requires_attachment: { type: boolean }
+                status: { type: string, enum: [ACTIVE, INACTIVE] }
+      responses:
+        "200":
+          description: Ažuriran servis.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Service"
+        "403":
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found.
+        "422":
+          description: Validaciona greška.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+    delete:
+      tags: [Services]
+      summary: Delete Service (ADMIN)
+      parameters:
+        - name: service_id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 12
+      responses:
+        "200":
+          description: Obrisano.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found.
+
+  /api/service-requests:
+    get:
+      tags: [Service Requests]
+      summary: List Service Requests (role-based)
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+          example: "SUBMITTED"
+        - name: service_id
+          in: query
+          required: false
+          schema: { type: integer }
+          example: 12
+      responses:
+        "200":
+          description: Lista zahteva.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ServiceRequest"
+    post:
+      tags: [Service Requests]
+      summary: Create Service Request (CITIZEN) -> DRAFT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [service_id]
+              properties:
+                service_id: { type: integer, example: 12 }
+                citizen_note: { type: string, nullable: true, example: "Molim da se izvod izda hitno." }
+                attachment: { type: string, nullable: true, example: "https://0x0.st/abcd.png" }
+                form_data:
+                  type: object
+                  additionalProperties: true
+                  example: { reason: "Lični dokument", urgent: true }
+      responses:
+        "200":
+          description: Kreiran DRAFT.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceRequest"
+        "201":
+          description: Kreiran DRAFT.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceRequest"
+        "403":
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Ne može (validacija / servis neaktivan).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/service-requests/{request_id}:
+    get:
+      tags: [Service Requests]
+      summary: Get Service Request
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 101
+      responses:
+        "200":
+          description: Zahtev.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceRequest"
+        "403":
+          description: Forbidden.
+        "404":
+          description: Not found.
+    put:
+      tags: [Service Requests]
+      summary: Update Service Request (CITIZEN DRAFT / ADMIN)
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 101
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                citizen_note: { type: string, nullable: true }
+                attachment: { type: string, nullable: true }
+                form_data:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: Ažuriran zahtev.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceRequest"
+        "403":
+          description: Forbidden.
+        "404":
+          description: Not found.
+        "422":
+          description: Ne može (npr. nije DRAFT).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags: [Service Requests]
+      summary: Delete Service Request (CITIZEN DRAFT / ADMIN)
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 101
+      responses:
+        "200":
+          description: Obrisano.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden.
+        "404":
+          description: Not found.
+        "422":
+          description: Ne može (npr. nije DRAFT).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/service-requests/{request_id}/submit:
+    patch:
+      tags: [Service Requests]
+      summary: Submit (CITIZEN) DRAFT -> SUBMITTED
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 101
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceRequest"
+        "403": { description: Forbidden. }
+        "404": { description: Not found. }
+        "422":
+          description: Ne može (pogrešan status).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/service-requests/{request_id}/assign:
+    patch:
+      tags: [Service Requests]
+      summary: Assign (OFFICER) SUBMITTED -> IN_REVIEW
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 101
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceRequest"
+        "403": { description: Forbidden. }
+        "404": { description: Not found. }
+        "422":
+          description: Ne može (pogrešan status / već dodeljen).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/service-requests/{request_id}/status:
+    patch:
+      tags: [Service Requests]
+      summary: Update Status (OFFICER) IN_REVIEW -> APPROVED/REJECTED
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 101
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [APPROVED, REJECTED]
+                  example: APPROVED
+                officer_note:
+                  type: string
+                  nullable: true
+                  example: "Zahtev je uredan."
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceRequest"
+        "403": { description: Forbidden. }
+        "404": { description: Not found. }
+        "422":
+          description: Ne može (pogrešan status / nije dodeljen).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/service-requests/{request_id}/payment:
+    patch:
+      tags: [Service Requests]
+      summary: Update Payment (OFFICER/ADMIN)
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 101
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payment_status]
+              properties:
+                payment_status:
+                  type: string
+                  enum: [NOT_REQUIRED, NOT_PAID, PENDING, PAID]
+                  example: PAID
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceRequest"
+        "403": { description: Forbidden. }
+        "404": { description: Not found. }
+        "422":
+          description: Ne može.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/service-requests/{request_id}/pdf:
+    get:
+      tags: [Service Requests]
+      summary: Download PDF
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 101
+      responses:
+        "200":
+          description: PDF fajl.
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "403": { description: Forbidden. }
+        "404": { description: Not found. }
+
+  /api/users:
+    get:
+      tags: [Users]
+      summary: List Users (ADMIN)
+      responses:
+        "200":
+          description: Lista korisnika.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+        "403": { description: Forbidden. }
+
+  /api/users/{user_id}:
+    get:
+      tags: [Users]
+      summary: Get User (ADMIN)
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 7
+      responses:
+        "200":
+          description: Korisnik.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "403": { description: Forbidden. }
+        "404": { description: Not found. }
+    delete:
+      tags: [Users]
+      summary: Delete User (ADMIN)
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 7
+      responses:
+        "200":
+          description: Obrisano.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403": { description: Forbidden. }
+        "404": { description: Not found. }
+        "422":
+          description: Ne može (npr. brisanje sebe).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/users/{user_id}/role:
+    patch:
+      tags: [Users]
+      summary: Update User Role (ADMIN)
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 7
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role:
+                  type: string
+                  enum: [CITIZEN, OFFICER, ADMIN]
+                  example: OFFICER
+      responses:
+        "200":
+          description: Uloga ažurirana.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "403": { description: Forbidden. }
+        "404": { description: Not found. }
+        "422":
+          description: Validaciona greška.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+
+  /api/stats:
+    get:
+      tags: [Statistics]
+      summary: Get Stats (role-based)
+      responses:
+        "200":
+          description: Statistika.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatsResponse"
+        "403": { description: Forbidden. }
+
+  /api/uploads/filebin:
+    post:
+      tags: [Files]
+      summary: Upload file (Filebin)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Upload uspešan.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResponse"
+        "201":
+          description: Upload uspešan.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResponse"
+        "422":
+          description: Upload/validacija nije uspela.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Greška servisa.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
