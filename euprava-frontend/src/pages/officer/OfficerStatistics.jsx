@@ -89,7 +89,6 @@ export default function OfficerStatistics() {
                   <FiAward /> Dodeljeno meni
                 </div>
                 <div className="stats-number">{stats.assigned_to_me}</div>
-                <div className="eu-muted">Broj zahteva sa processed_by = ti.</div>
               </div>
             ) : null}
           </div>

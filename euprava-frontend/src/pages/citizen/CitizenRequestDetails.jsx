@@ -223,7 +223,6 @@ export default function CitizenRequestDetails() {
                         if (f) upload(f);
                       }}
                     />
-                    <span className="eu-hint">Upload: /api/uploads/filebin.</span>
                   </div>
                 </div>
               </div>

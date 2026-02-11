@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import api from "../../api/axios";
 import NavBar from "../../components/NavBar";
-import { FiCreditCard, FiRefreshCw, FiArrowRight, FiCheckCircle } from "react-icons/fi";
+import { FiCreditCard, FiRefreshCw, FiCheckCircle, FiExternalLink } from "react-icons/fi";
+import { useNavigate } from "react-router-dom";
 
-export default function CitizenPayments() {
+export default function OfficerPayments() {
   const navigate = useNavigate();
+
   const [items, setItems] = useState([]);
   const [busy, setBusy] = useState(false);
   const [payBusyId, setPayBusyId] = useState(null);
@@ -15,6 +16,7 @@ export default function CitizenPayments() {
     setBusy(true);
     setError("");
     try {
+      //  ista ruta
       const res = await api.get("/api/service-requests");
       setItems(res?.data?.data || []);
     } catch (e) {
@@ -28,61 +30,47 @@ export default function CitizenPayments() {
     load();
   }, []);
 
-  const payItems = useMemo(() => {
-    return (items || []).filter(
-      (x) => x?.payment_status && String(x.payment_status).toUpperCase() !== "NOT_REQUIRED"
-    );
+  // Pomoćne funkcije
+  const norm = (v) => String(v || "").toUpperCase();
+
+  //  Backend bi idealno već vratio samo “moje” zahteve za OFFICER.
+  // Frontend filter je dodat za svaki slučaj.
+  const myPayItems = useMemo(() => {
+    return (items || [])
+      .filter((x) => norm(x?.payment_status) !== "NOT_REQUIRED") // samo oni koji imaju plaćanje
+      // .filter((x) => x?.processed_by != null) // opcionalno
+      ;
   }, [items]);
 
-  const canPay = (x) => {
-    const ps = String(x?.payment_status || "").toUpperCase();
-
-    // Ne plaća se ako je već plaćeno ili nema potrebe.
-    if (ps === "PAID" || ps === "NOT_REQUIRED" || ps === "PENDING") return false;
-
-    // Opcionalno pravilo: plaćanje tek kad je zahtev odobren.
-    // Ako želiš ovo pravilo, ostavi uključeno.
-    const st = String(x?.status || "").toUpperCase();
-    if (st !== "APPROVED") return false;
-
-    return true;
+  const canMarkPaid = (x) => {
+    //  samo PENDING -> PAID
+    return norm(x?.payment_status) === "PENDING";
   };
 
-  const pay = async (id) => {
+  const markPaid = async (id) => {
     setPayBusyId(id);
     setError("");
     try {
       await api.patch(`/api/service-requests/${id}/payment`, {
-        payment_status: "PENDING",
+        payment_status: "PAID",
       });
       await load();
     } catch (e) {
-      setError(e?.response?.data?.message || "Greška pri plaćanju zahteva.");
+      setError(e?.response?.data?.message || "Greška pri ažuriranju plaćanja.");
     } finally {
       setPayBusyId(null);
     }
   };
 
-  const payLabel = (x) => {
-    const st = String(x?.status || "").toUpperCase();
-    const ps = String(x?.payment_status || "").toUpperCase();
-
-    if (ps === "PAID") return "Plaćeno.";
-    if (ps === "NOT_REQUIRED") return "Nije potrebno.";
-    if (st !== "APPROVED") return "Čeka odobrenje.";
-    return "Plati.";
-  };
-
   return (
     <div className="home-page">
-      {/* Ako je ovo za OFFICER, promeni roleLabel="Službenik". */}
-      <NavBar roleLabel="Građanin" />
+      <NavBar roleLabel="Službenik" />
 
       <div className="home-wrap">
         <div className="page-head">
           <div>
             <div className="page-title">Plaćanja</div>
-            <div className="page-subtitle">Pregled payment statusa po zahtevima.</div>
+            <div className="page-subtitle">Vidi i ažuriraj plaćanja za tvoje zahteve (samo PENDING → PAID).</div>
           </div>
 
           <button className="eu-btn eu-btn--primary" onClick={load} disabled={busy || payBusyId !== null}>
@@ -93,52 +81,61 @@ export default function CitizenPayments() {
 
         {error ? <div className="eu-alert eu-alert--err">{error}</div> : null}
         {busy ? <div className="eu-empty">Učitavanje…</div> : null}
-        {!busy && payItems.length === 0 ? <div className="eu-empty">Nema zahteva koji zahtevaju plaćanje.</div> : null}
+        {!busy && myPayItems.length === 0 ? <div className="eu-empty">Nema zahteva sa plaćanjem.</div> : null}
 
         <div className="eu-list">
           {!busy &&
-            payItems.map((x) => (
+            myPayItems.map((x) => (
               <div key={x.id} className="eu-panel eu-panel--row">
                 <div className="eu-rowLeft">
                   <div className="eu-rowIcon">
                     <FiCreditCard />
                   </div>
+
                   <div className="eu-rowMain">
                     <div className="eu-rowTitle">
                       Zahtev #{x.id}{" "}
-                      <span className="eu-badge eu-badge--ghost">
-                        {String(x.payment_status || "").toUpperCase()}
-                      </span>
+                      <span className="eu-badge eu-badge--ghost">{norm(x.payment_status)}</span>
                     </div>
+
                     <div className="eu-rowMeta">
                       <span className="eu-muted">
-                        Status: <b>{x?.status || "—"}</b>.
+                        Status zahteva: <b>{x?.status || "—"}</b>.
                       </span>{" "}
                       <span className="eu-muted">
                         Usluga: <b>{x?.service?.name || "—"}</b>.
+                      </span>{" "}
+                      <span className="eu-muted">
+                        Taksa: <b>{Number(x?.service?.fee || 0).toFixed(2)}</b>
                       </span>
                     </div>
+
+                    {x?.payment_date ? (
+                      <div className="eu-muted" style={{ marginTop: 4 }}>
+                        Datum uplate: <b>{new Date(x.payment_date).toLocaleString()}</b>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
-                <div className="eu-rowActions" style={{ display: "flex", gap: 10 }}>
+                <div className="eu-rowActions" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <button
                     className="eu-btn eu-btn--ghost"
-                    onClick={() => navigate(`/citizen/requests/${x.id}`)}
+                    onClick={() => navigate(`/officer/requests/${x.id}`)}
                     disabled={payBusyId === x.id}
                   >
-                    <FiArrowRight />
+                    <FiExternalLink />
                     Detalji
                   </button>
 
                   <button
                     className="eu-btn eu-btn--primary"
-                    onClick={() => pay(x.id)}
-                    disabled={!canPay(x) || payBusyId === x.id}
-                    title={!canPay(x) ? "Plaćanje je dozvoljeno tek nakon odobrenja i ako nije već plaćeno." : ""}
+                    onClick={() => markPaid(x.id)}
+                    disabled={!canMarkPaid(x) || payBusyId === x.id}
+                    title={!canMarkPaid(x) ? "Možeš označiti kao PAID samo kada je payment_status = PENDING." : ""}
                   >
                     <FiCheckCircle />
-                    {payBusyId === x.id ? "Obrada…" : payLabel(x)}
+                    {payBusyId === x.id ? "Obrada…" : "Plaćeno"}
                   </button>
                 </div>
               </div>

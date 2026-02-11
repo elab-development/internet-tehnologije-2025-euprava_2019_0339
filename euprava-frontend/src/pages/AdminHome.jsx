@@ -11,7 +11,6 @@ export default function AdminHome() {
       { title: "Institucije", desc: "Kreiranje i izmena institucija.", Icon: FiHome, route: "/admin/institutions", buttonText: "Institucije" },
       { title: "Tipovi (Type)", desc: "Konfiguracija tipova koji se vezuju za servise.", Icon: FiTag, route: "/admin/types", buttonText: "Upravljaj tipovima" },
       { title: "Servisi", desc: "Kreiranje i izmena servisa.", Icon: FiTool, route: "/admin/services", buttonText: "Upravljaj servisima" },
-      { title: "Dokumenta", desc: "Pregled i rad sa dokumentima.", Icon: FiFileText, route: "/admin/documents", buttonText: "Dokumenta" },
       { title: "Statistika", desc: "Pregled metrika i performansi.", Icon: FiBarChart2, route: "/admin/stats", buttonText: "Statistika" },
     ],
     []

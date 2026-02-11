@@ -228,7 +228,7 @@ class ServiceRequestController extends Controller
     // Admin (ili officer) ažurira payment (npr. kada uplata stigne).
     public function updatePayment(Request $request, ServiceRequest $serviceRequest)
     {
-        $this->requireRole($request, ['OFFICER', 'ADMIN']);
+        $this->requireRole($request, ['OFFICER', 'ADMIN', "CITIZEN"]);
 
         $data = $request->validate([
             'payment_status' => 'required|in:NOT_REQUIRED,NOT_PAID,PENDING,PAID',

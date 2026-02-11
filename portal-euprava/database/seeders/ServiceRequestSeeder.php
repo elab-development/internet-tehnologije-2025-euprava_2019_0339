@@ -15,6 +15,16 @@ class ServiceRequestSeeder extends Seeder
         $officers = User::where('role', 'OFFICER')->get();
         $services = Service::with(['institution', 'type'])->get();
 
+        //  Demo javni linkovi (0x0.st) – ubaci ovde svoje realne linkove.
+        // Važno: u bazi čuvaš PUN URL, npr. "https://0x0.st/abcd.pdf" ili bez ekstenzije.
+        $publicAttachments = [
+            'https://0x0.st/EXAMPLE1.pdf',
+            'https://0x0.st/EXAMPLE2.pdf',
+            'https://0x0.st/EXAMPLE3.png',
+            'https://0x0.st/EXAMPLE4.jpg',
+            'https://0x0.st/EXAMPLE5', // može i bez ekstenzije
+        ];
+
         foreach ($citizens as $citizen) {
             for ($i = 0; $i < 2; $i++) {
                 $service = $services->random();
@@ -41,9 +51,10 @@ class ServiceRequestSeeder extends Seeder
                     'napomena' => fake()->sentence(),
                 ];
 
+                //  Ako servis zahteva prilog, izaberi jedan od javnih 0x0.st linkova.
                 $attachment = null;
                 if ((bool) $service->requires_attachment) {
-                    $attachment = 'uploads/demo/attachment_' . $citizen->id . '_' . now()->timestamp . '.pdf';
+                    $attachment = $publicAttachments[array_rand($publicAttachments)];
                 }
 
                 $paymentStatus = 'NOT_REQUIRED';
@@ -65,7 +76,7 @@ class ServiceRequestSeeder extends Seeder
                     'status' => $status,
                     'citizen_note' => 'Molim obradu zahteva.',
                     'officer_note' => $officerNote,
-                    'attachment' => $attachment,
+                    'attachment' => $attachment, //  sada je ovo pun URL ka 0x0.st
                     'form_data' => $formData,
                     'payment_status' => $paymentStatus,
                     'payment_date' => $paymentDate,

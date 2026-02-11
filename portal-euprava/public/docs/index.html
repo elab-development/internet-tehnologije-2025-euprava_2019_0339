@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+  <meta charset="UTF-8" />
+  <title>eUprava API Docs</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist/swagger-ui.css" />
+  <style> body { margin: 0; } </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+
+  <script src="https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js"></script>
+  <script src="https://unpkg.com/swagger-ui-dist/swagger-ui-standalone-preset.js"></script>
+
+  <script>
+    window.onload = () => {
+      SwaggerUIBundle({
+        url: "./openapi.yaml",
+        dom_id: "#swagger-ui",
+        deepLinking: true,
+        presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+        layout: "BaseLayout",
+
+        // Ovo omogućava da /api/auth/login/admin, /officer, /citizen rade kao aliasi
+        // ali se request stvarno pošalje na /api/auth/login.
+        requestInterceptor: (req) => {
+          if (req.url.endsWith("/api/auth/login/admin") ||
+              req.url.endsWith("/api/auth/login/officer") ||
+              req.url.endsWith("/api/auth/login/citizen")) {
+            req.url = req.url.replace(/\/api\/auth\/login\/(admin|officer|citizen)$/, "/api/auth/login");
+          }
+          return req;
+        },
+      });
+    };
+  </script>
+</body>
+</html>
