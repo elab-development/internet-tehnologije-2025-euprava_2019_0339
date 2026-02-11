@@ -13,7 +13,6 @@ import OfficerInbox from "./pages/officer/OfficerInbox";
 import OfficerReview from "./pages/officer/OfficerReview";
 import OfficerApprovals from "./pages/officer/OfficerApprovals";
 import OfficerRejections from "./pages/officer/OfficerRejections";
-import OfficerDocuments from "./pages/officer/OfficerDocuments";
 import OfficerStatistics from "./pages/officer/OfficerStatistics";
 import OfficerRequestDetails from "./pages/officer/OfficerRequestDetails";
 
@@ -30,7 +29,6 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminInstitutions from "./pages/admin/AdminInstitutions";
 import AdminTypes from "./pages/admin/AdminTypes";
 import AdminServices from "./pages/admin/AdminServices";
-import AdminDocuments from "./pages/admin/AdminDocuments"; // nedovršeno
 import AdminStats from "./pages/admin/AdminStats"; // nedovršeno
 
 function getSessionUser() {
@@ -206,14 +204,6 @@ export default function App() {
           }
         />
         <Route
-          path="/officer/documents"
-          element={
-            <ProtectedRoute allowedRoles={["OFFICER"]}>
-              <OfficerDocuments />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/officer/stats"
           element={
             <ProtectedRoute allowedRoles={["OFFICER"]}>
@@ -229,6 +219,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
 
         {/* =========================
             ADMIN routes
@@ -274,15 +265,6 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={["ADMIN"]}>
               <AdminServices />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/admin/documents"
-          element={
-            <ProtectedRoute allowedRoles={["ADMIN"]}>
-              <AdminDocuments />
             </ProtectedRoute>
           }
         />

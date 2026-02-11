@@ -159,10 +159,6 @@ export default function CitizenRequestNew() {
                   }}
                   disabled={busy}
                 />
-
-                <span className="eu-hint">
-                  Upload ruta: <b>/api/uploads/filebin</b>.
-                </span>
               </div>
 
               {attachmentLink ? (

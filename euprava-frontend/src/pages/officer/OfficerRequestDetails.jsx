@@ -3,7 +3,15 @@ import { useNavigate, useParams } from "react-router-dom";
 import api from "../../api/axios";
 import NavBar from "../../components/NavBar";
 
-import { FiFileText, FiCheckCircle, FiXCircle, FiArrowLeft, FiDownload, FiEdit3 } from "react-icons/fi";
+import {
+  FiFileText,
+  FiCheckCircle,
+  FiXCircle,
+  FiArrowLeft,
+  FiDownload,
+  FiEdit3,
+  FiExternalLink,
+} from "react-icons/fi";
 
 export default function OfficerRequestDetails() {
   const { id } = useParams();
@@ -31,6 +39,7 @@ export default function OfficerRequestDetails() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const canChangeStatus = useMemo(() => {
@@ -53,6 +62,7 @@ export default function OfficerRequestDetails() {
       await load();
     } catch (e) {
       setError(e?.response?.data?.message || "Greška pri promeni statusa.");
+    } finally {
       setBusy(false);
     }
   };
@@ -81,6 +91,75 @@ export default function OfficerRequestDetails() {
     }
   };
 
+  // ---------- ATTACHMENT PREVIEW VIA BACKEND PROXY ----------
+  // 0x0.st ne dozvoljava iframe embed (X-Frame-Options/CSP), pa preview radimo preko našeg backend proxy endpoint-a:
+  // GET /api/service-requests/{id}/attachment  -> vraća fajl kao inline (pdf/image).
+  const proxyPreviewUrl = useMemo(() => {
+    if (!item?.attachment) return null;
+    return `/api/service-requests/${id}/attachment`;
+  }, [item?.attachment, id]);
+
+  const guessFileType = (url, mimeType) => {
+    const mt = (mimeType || "").toLowerCase();
+    if (mt.includes("pdf")) return "pdf";
+    if (mt.startsWith("image/")) return "image";
+
+    const clean = (url || "").split("?")[0].toLowerCase();
+    if (clean.endsWith(".pdf")) return "pdf";
+    if (
+      clean.endsWith(".png") ||
+      clean.endsWith(".jpg") ||
+      clean.endsWith(".jpeg") ||
+      clean.endsWith(".webp") ||
+      clean.endsWith(".gif")
+    ) {
+      return "image";
+    }
+    return "other";
+  };
+
+  // Ako tvoj resource ne vraća mimeType, biće fallback po ekstenziji (ako je ima).
+  const fileType = useMemo(
+    () => guessFileType(item?.attachment, item?.attachment_mimeType || item?.mimeType),
+    [item]
+  );
+
+  const openAttachment = () => {
+    if (!item?.attachment) return;
+    window.open(item.attachment, "_blank", "noopener,noreferrer"); // originalni 0x0.st link
+  };
+
+  const downloadAttachment = async () => {
+    if (!proxyPreviewUrl) return;
+
+    setBusy(true);
+    setError("");
+    try {
+      // Skidamo preko proxy-ja (auth headers idu kroz axios)
+      const res = await api.get(proxyPreviewUrl, { responseType: "blob" });
+      const blobUrl = window.URL.createObjectURL(res.data);
+
+      const a = document.createElement("a");
+      a.href = blobUrl;
+
+      // pokušaj da izvučeš ekstenziju iz originalnog linka
+      const original = item?.attachment || "";
+      const extMatch = original.split("?")[0].match(/\.(pdf|png|jpg|jpeg|webp|gif)$/i);
+      const ext = extMatch ? extMatch[1].toLowerCase() : "";
+      a.download = `attachment-${id}${ext ? `.${ext}` : ""}`;
+
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      setError(e?.response?.data?.message || "Greška pri preuzimanju priloga.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="home-page">
       <NavBar roleLabel="Službenik" />
@@ -89,7 +168,7 @@ export default function OfficerRequestDetails() {
         <div className="page-head">
           <div>
             <div className="page-title">Zahtev #{id}</div>
-            <div className="page-subtitle">Pregled detalja i akcije (odobri/odbij, PDF).</div>
+            <div className="page-subtitle">Pregled detalja i akcije (odobri/odbij, PDF, prilog).</div>
           </div>
 
           <div style={{ display: "flex", gap: 10 }}>
@@ -149,6 +228,41 @@ export default function OfficerRequestDetails() {
                 </div>
               </div>
 
+              {/* ATTACHMENT */}
+              <div style={{ marginTop: 14 }}>
+                <div className="eu-sectionTitle">
+                  <FiFileText /> Prilog
+                </div>
+
+                {proxyPreviewUrl ? (
+                  <div style={{ display: "grid", gap: 10 }}>
+                    <div className="eu-empty" style={{ padding: 10 }}>
+                      <div className="eu-muted" style={{ marginTop: 10, wordBreak: "break-all" }}>
+                        Originalni link:{" "}
+                        <a href={item?.attachment} target="_blank" rel="noreferrer">
+                          {item?.attachment}
+                        </a>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      <button className="eu-btn eu-btn--ghost" onClick={openAttachment} disabled={busy}>
+                        <FiExternalLink />
+                        Otvori (0x0.st)
+                      </button>
+
+                      <button className="eu-btn eu-btn--primary" onClick={downloadAttachment} disabled={busy}>
+                        <FiDownload />
+                        Preuzmi
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="eu-muted">Nema dodatog priloga.</div>
+                )}
+              </div>
+
+              {/* OFFICER NOTE */}
               <div style={{ marginTop: 14 }}>
                 <div className="eu-sectionTitle">
                   <FiEdit3 /> Napomena službenika
@@ -159,7 +273,7 @@ export default function OfficerRequestDetails() {
                   value={officerNote}
                   onChange={(e) => setOfficerNote(e.target.value)}
                   rows={4}
-                  disabled={busy}
+                  disabled={busy || !canChangeStatus}
                 />
               </div>
             </div>

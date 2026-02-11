@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { FiInbox, FiSearch, FiCheckCircle, FiXCircle, FiFileText, FiBarChart2 } from "react-icons/fi";
+import { FiInbox, FiSearch, FiCheckCircle, FiXCircle, FiBarChart2, FiCreditCard } from "react-icons/fi";
 
 import NavBar from "../components/NavBar";
 import ActionCard from "../components/ActionCard";
@@ -11,8 +11,8 @@ export default function OfficerHome() {
       { title: "Provera dokumentacije", desc: "Validacija priloga i unos napomena.", Icon: FiSearch, route: "/officer/review", buttonText: "Započni proveru" },
       { title: "Odobravanja", desc: "Odobri zahtev ili vrati na dopunu.", Icon: FiCheckCircle, route: "/officer/approvals", buttonText: "Odobravanja" },
       { title: "Odbijanja", desc: "Odbij zahtev uz obrazloženje.", Icon: FiXCircle, route: "/officer/rejections", buttonText: "Odbijanja" },
-      { title: "Dokumenta", desc: "Generisanje i preuzimanje PDF dokumenata.", Icon: FiFileText, route: "/officer/documents", buttonText: "Dokumenta" },
       { title: "Statistika", desc: "Uvid u statuse i učinak.", Icon: FiBarChart2, route: "/officer/stats", buttonText: "Vidi statistiku" },
+      { title: "Plaćanja", desc: "Pregled i evidencija uplata za tvoje zahteve.", Icon: FiCreditCard, route: "/officer/payments", buttonText: "Otvori plaćanja" },
     ],
     []
   );
