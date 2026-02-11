@@ -15,6 +15,7 @@ import OfficerApprovals from "./pages/officer/OfficerApprovals";
 import OfficerRejections from "./pages/officer/OfficerRejections";
 import OfficerStatistics from "./pages/officer/OfficerStatistics";
 import OfficerRequestDetails from "./pages/officer/OfficerRequestDetails";
+import OfficerPayments from "./pages/officer/OfficerPayments";
 
 // Citizen pages
 import CitizenServices from "./pages/citizen/CitizenServices";
@@ -216,6 +217,15 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={["OFFICER"]}>
               <OfficerRequestDetails />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/officer/payments"
+          element={
+            <ProtectedRoute allowedRoles={["OFFICER"]}>
+              <OfficerPayments />
             </ProtectedRoute>
           }
         />

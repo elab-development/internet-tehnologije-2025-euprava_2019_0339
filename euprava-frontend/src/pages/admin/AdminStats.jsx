@@ -8,7 +8,7 @@ function safeArray(v) {
   return Array.isArray(v) ? v : [];
 }
 
-// ✅ Paleta boja (ponavlja se ako ima više segmenata nego boja).
+//  Paleta boja (ponavlja se ako ima više segmenata nego boja).
 const PIE_COLORS = [
   "#7C3AED", // ljubičasta
   "#06B6D4", // cyan
