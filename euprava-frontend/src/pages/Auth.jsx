@@ -69,7 +69,7 @@ export default function Auth() {
         return;
       }
 
-      // odmah nakon registracije prebaci na login i popuni polje za mail
+      // odmah ide na login
       setLoginEmail(regEmail);
       setLoginPassword("");
       setActiveTab("login");
