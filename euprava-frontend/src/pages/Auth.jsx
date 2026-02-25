@@ -69,7 +69,7 @@ export default function Auth() {
         return;
       }
 
-      // odmah ide na login
+      // odmah
       setLoginEmail(regEmail);
       setLoginPassword("");
       setActiveTab("login");
